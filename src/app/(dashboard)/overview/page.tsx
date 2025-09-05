@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { io, Socket } from "socket.io-client";
 
 interface NewsItem {
   headline: string;
@@ -15,40 +14,45 @@ export default function OverviewPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    const socket: Socket = io({
-      path: "/api/socket",
-    });
-
-    socket.on("connect", () => {
-      setIsConnected(true);
-    });
-
-    socket.on("news-initial", (newsData: NewsItem[]) => {
-      setNews(newsData);
-    });
-
-    socket.on("news-item", (newItem: NewsItem) => {
-      setNews((prevNews) => {
-        const filtered = prevNews.filter(item => item.id !== newItem.id);
-        return [newItem, ...filtered].slice(0, 20);
-      });
-      setLastUpdate(new Date());
-    });
-
-    socket.on("disconnect", (reason) => {
-      setIsConnected(false);
-    });
-
-    socket.on("connect_error", (err) => {
-      setIsConnected(false);
-    });
-
-    return () => {
-      socket.disconnect();
+    const fetchNews = async () => {
+      try {
+        const response = await fetch('/api/news');
+        if (response.ok) {
+          const newsData = await response.json();
+          setNews(newsData);
+          setIsConnected(true);
+        }
+      } catch (error) {
+        setIsConnected(false);
+      }
     };
+
+    fetchNews();
+    const newsInterval = setInterval(fetchNews, 5 * 60 * 1000); // Refresh every 5 minutes
+
+    return () => clearInterval(newsInterval);
   }, []);
+
+  useEffect(() => {
+    if (news.length === 0) return;
+
+    const rotateNews = () => {
+      setCurrentIndex((prev) => (prev + 1) % news.length);
+      setLastUpdate(new Date());
+    };
+
+    const rotateInterval = setInterval(rotateNews, 7000); // Rotate every 7 seconds
+    return () => clearInterval(rotateInterval);
+  }, [news.length]);
+
+  const displayNews = news.length > 0 ? [
+    news[currentIndex],
+    ...news.slice(0, currentIndex),
+    ...news.slice(currentIndex + 1)
+  ].slice(0, 20) : [];
 
   return (
     <div className="h-full bg-gray-50 overflow-hidden overflow-x-hidden">
@@ -68,10 +72,10 @@ export default function OverviewPage() {
           </div>
         </div>
         
-        {news.length > 0 ? (
+        {displayNews.length > 0 ? (
           <div className="flex-1 overflow-y-auto">
             <div className="space-y-4 pr-2 pb-6">
-              {news.map((item, index) => (
+              {displayNews.map((item, index) => (
                 <div
                   key={`${item.id}-${lastUpdate.getTime()}`}
                   className={`bg-white rounded-lg shadow-md p-6 border-l-4 transition-all duration-300 hover:shadow-lg ${
@@ -104,7 +108,7 @@ export default function OverviewPage() {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-gray-400 text-lg">
-              {isConnected ? "Waiting for news..." : "Connecting to news feed..."}
+              {isConnected ? "Loading news..." : "Connecting to news feed..."}
             </div>
           </div>
         )}
