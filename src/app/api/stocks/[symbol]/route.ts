@@ -3,10 +3,11 @@ import yahooFinance from "yahoo-finance2";
 
 export async function GET(
   req: Request,
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const { symbol } = await params;
   try {
-    const symbol = decodeURIComponent(params.symbol);
+    const decodedSymbol = decodeURIComponent(symbol);
 
     // Parse query (timeframe TF: 1M, 6M, 1Y)
     const { searchParams } = new URL(req.url);
@@ -20,7 +21,7 @@ export async function GET(
     else if (tf === "1Y") period1.setFullYear(today.getFullYear() - 1);
 
     // Fetch historical data
-    const result = await yahooFinance.historical(symbol, {
+    const result = await yahooFinance.historical(decodedSymbol, {
       period1,
       interval: "1d",
     });
@@ -30,7 +31,7 @@ export async function GET(
       close: d.close,
     }));
 
-    return NextResponse.json({ symbol, tf, prices });
+    return NextResponse.json({ symbol: decodedSymbol, tf, prices });
   } catch (err) {
     console.error("❌ Stock API error:", err);
     return NextResponse.json(
