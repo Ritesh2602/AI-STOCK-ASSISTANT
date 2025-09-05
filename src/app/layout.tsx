@@ -13,11 +13,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="bg-gray-950 text-gray-100 font-sans">
+    <html lang="en" className="dark h-full" suppressHydrationWarning>
+      <body className="bg-gray-950 text-gray-100 font-sans h-full overflow-hidden">
         <AuthProvider>
-          <Navbar />
-          {children}
+          <div className="h-full flex flex-col">
+            <div className="fixed top-0 left-0 right-0 z-50">
+              <Navbar />
+            </div>
+            <main className="flex-1 pt-20 overflow-hidden">
+              {children}
+            </main>
+          </div>
         </AuthProvider>
         <Toaster position="top-right" />
       </body>

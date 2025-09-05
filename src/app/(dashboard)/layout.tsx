@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen w-screen">
-      {/* Sidebar - Compressed on small screens */}
-      <aside className="w-12 md:w-16 lg:w-64 bg-gray-900 border-r border-gray-800 p-1 md:p-2 lg:p-4">
+    <div className="flex h-full w-full">
+      {/* Fixed Sidebar */}
+      <aside className="fixed left-0 top-20 bottom-0 w-12 md:w-16 lg:w-64 bg-gray-900 border-r border-gray-800 p-1 md:p-2 lg:p-4 z-40">
         <h1 className="text-xl font-bold text-white mb-6 hidden lg:block">
-          📊 AI Stock Mentor
+          📊 AI Stock Assistant
         </h1>
         <div className="text-lg md:text-2xl mb-4 md:mb-6 text-center lg:hidden">
           📊
@@ -71,8 +71,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </nav>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 p-4 lg:p-6 overflow-y-auto">{children}</main>
+      {/* Main content with left margin for sidebar */}
+      <main className="flex-1 ml-12 md:ml-16 lg:ml-64 p-4 lg:p-6 overflow-y-auto h-full">
+        {children}
+      </main>
     </div>
   );
 }
