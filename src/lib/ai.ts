@@ -1,26 +1,58 @@
-// src/lib/ai.ts
+// src/lib/ai.ts - Updated to fix deprecated Cohere model
 import { CohereClient } from "cohere-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY!,
 });
 
+// Initialize Google Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
 const HF_API_URL =
   "https://api-inference.huggingface.co/models/google/flan-t5-base";
+
+// ✅ Google Gemini
+async function tryGemini(prompt: string): Promise<string | null> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    return text?.trim() || null;
+  } catch (err) {
+    console.error("⚠️ Gemini failed:", err);
+    return null;
+  }
+}
 
 // ✅ Cohere with chat API
 async function tryCohere(prompt: string): Promise<string | null> {
   try {
     const response = await cohere.chat({
-      model: "command-r", // 👈 works with chat
+      model: "command-r-plus", // Updated to use available model
       message: prompt,
+      maxTokens: 1000, // Add token limit
+      temperature: 0.3, // Add temperature for consistent responses
     });
 
     const text = response.text?.trim();
     return text || null;
   } catch (err) {
     console.error("⚠️ Cohere failed:", err);
-    return null;
+    // Try with a different model if command-r-plus fails
+    try {
+      const fallbackResponse = await cohere.chat({
+        model: "command", // Fallback to basic command model
+        message: prompt,
+        maxTokens: 1000,
+        temperature: 0.3,
+      });
+      return fallbackResponse.text?.trim() || null;
+    } catch (fallbackErr) {
+      console.error("⚠️ Cohere fallback also failed:", fallbackErr);
+      return null;
+    }
   }
 }
 
@@ -65,9 +97,15 @@ async function tryHF(prompt: string): Promise<string | null> {
 
 // ✅ Unified entry point with fallback
 export async function askAI(prompt: string): Promise<string> {
+  // Try Gemini first (more reliable)
+  const geminiRes = await tryGemini(prompt);
+  if (geminiRes) return geminiRes;
+
+  // Try Cohere as backup
   const cohereRes = await tryCohere(prompt);
   if (cohereRes) return cohereRes;
 
+  // Try Hugging Face as last resort
   const hfRes = await tryHF(prompt);
   if (hfRes) return hfRes;
 
